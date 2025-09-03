@@ -1,0 +1,7 @@
+{
+  "endpoint": "localhost:3000",
+  "log": {
+    "file": "/var/log/console.log",
+    "name": "default.log"
+  }
+}
