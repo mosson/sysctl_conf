@@ -1,17 +1,11 @@
+pub mod error;
+pub mod schema;
+
 use std::{collections::HashMap, io::BufRead};
 
 use serde::Serialize;
-// cSpell:disable
-use thiserror::Error;
-// cSpell:enable
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("`key = value` の書式を満たしていません: {0}")]
-    InvalidKeyValuePair(String),
-    #[error("{0}")]
-    Unknown(String),
-}
+use crate::config::{error::Error, schema::Schema};
 
 #[derive(Debug, Serialize)]
 // jsonのキー名に出力させない
@@ -62,19 +56,19 @@ impl Entry {
 pub struct Config(HashMap<String, Box<Entry>>);
 
 impl Config {
-    pub fn parse<T: BufRead>(handle: T) -> Result<Self, Error> {
+    pub fn parse<T: BufRead>(handle: T, schema: Schema) -> Result<Self, Error> {
         let mut config = Self::new();
 
         for line in handle.lines() {
-            let line = line.map_err(|e| Error::Unknown(e.to_string()))?;
+            let line = line
+                .map_err(|e| Error::Unknown(e.to_string()))?
+                .trim()
+                .to_string();
 
             // Blank lines and lines that start with “#” or “;” are ignored.
             if line.is_empty() || line.starts_with('#') || line.starts_with(';') {
                 continue;
             }
-
-            // If a line begins with a single “-”, a failing attempt to set the　value is ignored.
-            // sysctl.conf そのものではないため許可リストが存在しないので対応しない。
 
             let pair = line
                 .split("=")
@@ -83,10 +77,36 @@ impl Config {
                 .collect::<Vec<_>>();
 
             if pair.len() != 2 {
-                return Err(Error::InvalidKeyValuePair(line));
+                return Err(Error::InvalidKeyValuePair(
+                    line.to_string(),
+                    "=".to_string(),
+                ));
             }
 
-            let (mut keys, value) = (pair[0].split('.').rev().collect::<Vec<_>>(), pair[1]);
+            let (key, value) = (pair[0], pair[1]);
+
+            let value_check = match schema.get(key) {
+                Some(value_checker) => value_checker.check(value),
+                None => {
+                    // If a line begins with a single “-”, a failing attempt to set the　value is ignored.
+                    if line.starts_with('-') {
+                        continue;
+                    } else {
+                        return Err(Error::UndefinedSchema(key.to_string()));
+                    }
+                }
+            };
+
+            if let Err(e) = value_check {
+                // If a line begins with a single “-”, a failing attempt to set the　value is ignored.
+                if line.starts_with('-') {
+                    continue;
+                } else {
+                    return Err(e);
+                }
+            }
+
+            let mut keys = key.split('.').rev().collect::<Vec<_>>();
             let key = keys.last().unwrap();
 
             let entry = config
