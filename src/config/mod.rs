@@ -29,8 +29,8 @@ impl Entry {
                             config
                                 .0
                                 .entry(key.to_string())
-                                .and_modify(|v| *v = Box::new(Self::Value(value.to_string())))
-                                .or_insert(Box::new(Self::Value(value.to_string())));
+                                .and_modify(|v| *v = Self::Value(value.to_string()))
+                                .or_insert(Self::Value(value.to_string()));
                         }
                     }
                 } else {
@@ -40,7 +40,7 @@ impl Entry {
                             config
                                 .0
                                 .entry(key.to_string())
-                                .or_insert(Box::new(Self::Nest(Config::new())))
+                                .or_insert(Self::Nest(Config::new()))
                                 .set(keys, value)?;
                         }
                     }
@@ -53,7 +53,7 @@ impl Entry {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Config(HashMap<String, Box<Entry>>);
+pub struct Config(HashMap<String, Entry>);
 
 impl Config {
     pub fn parse<T: BufRead>(handle: T, schema: Schema) -> Result<Self, Error> {
@@ -117,19 +117,19 @@ impl Config {
                         return;
                     }
 
-                    if let Entry::Value(_) = **v {
-                        *v = Box::new(Entry::Nest(Config::new()));
+                    if let Entry::Value(_) = *v {
+                        *v = Entry::Nest(Config::new());
                     }
                 })
                 .or_insert_with(|| {
                     if keys.len() > 1 {
-                        Box::new(Entry::Nest(Config::new()))
+                        Entry::Nest(Config::new())
                     } else {
-                        Box::new(Entry::Value(value.to_string()))
+                        Entry::Value(value.to_string())
                     }
                 });
 
-            if let Entry::Nest(_) = **entry {
+            if let Entry::Nest(_) = *entry {
                 keys.pop();
             }
 
