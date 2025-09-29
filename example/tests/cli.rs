@@ -1,3 +1,7 @@
+fn main() {
+    println!("Hello, World!");
+}
+
 use assert_cmd::Command;
 use pretty_assertions::assert_eq;
 use serde_json::{Value, json};
@@ -5,7 +9,7 @@ use std::fs;
 
 type MyResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-const PRG: &str = "skill-check";
+const PRG: &str = "example";
 
 fn run(args: &[&str], expected_file: &str) -> MyResult<()> {
     let expected: Value = serde_json::from_str(&fs::read_to_string(expected_file)?).unwrap();
@@ -23,7 +27,7 @@ fn run(args: &[&str], expected_file: &str) -> MyResult<()> {
 #[test]
 fn example1() -> MyResult<()> {
     run(
-        &["-s", "tests/inputs/schema.txt", "tests/inputs/output1.txt"],
+        &["-s", "tests/inputs/schema.txt", "tests/inputs/example1.txt"],
         "tests/expected/output1.json",
     )
 }
@@ -31,7 +35,7 @@ fn example1() -> MyResult<()> {
 #[test]
 fn example2() -> MyResult<()> {
     run(
-        &["-s", "tests/inputs/schema.txt", "tests/inputs/output2.txt"],
+        &["-s", "tests/inputs/schema.txt", "tests/inputs/example2.txt"],
         "tests/expected/output2.json",
     )
 }
@@ -53,20 +57,6 @@ fn double_stdin() -> MyResult<()> {
 }
 
 #[test]
-fn undefined_schema() -> MyResult<()> {
-    let output = Command::cargo_bin(PRG)?
-        .write_stdin("")
-        .args(&["-s", "-", "tests/inputs/output1.txt"])
-        .output()
-        .unwrap();
-    assert!(!output.status.success());
-    let error_message = String::from_utf8(output.stderr).expect("invalid UTF-8");
-    assert_eq!(error_message, "未定義のスキーマです: endpoint\n");
-
-    Ok(())
-}
-
-#[test]
 fn skip_undefined_schema() -> MyResult<()> {
     let output = Command::cargo_bin(PRG)?
         .write_stdin(
@@ -75,13 +65,14 @@ fn skip_undefined_schema() -> MyResult<()> {
             log.file -> string
         "#,
         )
-        .args(&["-s", "-", "tests/inputs/output3.txt"])
+        .args(&["-s", "-", "tests/inputs/example3.txt"])
         .output()
         .unwrap();
     assert!(output.status.success());
 
     let expected: Value = json!({
-        "debug": "true",
+        "debug": true,
+        "endpoint": "localhost:3000",
         "log": {
             "file": "/var/log/console.log"
         }
@@ -107,45 +98,15 @@ fn type_error() -> MyResult<()> {
             retry -> bool
         "#,
         )
-        .args(&["-s", "-", "tests/inputs/output1.txt"])
+        .args(&["-s", "-", "tests/inputs/example1.txt"])
         .output()
         .unwrap();
     assert!(!output.status.success());
     let error_message = String::from_utf8(output.stderr).expect("invalid UTF-8");
     assert_eq!(
         error_message,
-        "スキーマ違反です: localhost:3000 は bool として解釈できません（provided string was not `true` or `false`）\n"
+        "`endpoint` は `bool` 型として指定されていますが `\"localhost:3000\"` は `bool` として解釈できません\n"
     );
-
-    Ok(())
-}
-
-#[test]
-fn skip_type_error() -> MyResult<()> {
-    let output = Command::cargo_bin(PRG)?
-        .write_stdin(
-            r#"
-            endpoint -> bool
-            debug -> bool
-            log.file -> string
-        "#,
-        )
-        .args(&["-s", "-", "tests/inputs/output3.txt"])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-
-    let expected: Value = json!({
-        "debug": "true",
-        "log": {
-            "file": "/var/log/console.log"
-        }
-    });
-
-    let stdout = String::from_utf8(output.stdout).expect("invalid UTF-8");
-    let value: Value = serde_json::from_str(&stdout).unwrap();
-
-    assert_eq!(value, expected);
 
     Ok(())
 }

@@ -1,0 +1,18 @@
+[package]
+name = "example"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+node.workspace = true
+parser.workspace = true
+clap = { version = "4.5.47", features = ["derive"] }
+
+[dev-dependencies]
+assert_cmd = "2.0.17"
+pretty_assertions = "1.4.1"
+rstest = "0.26.1"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"

@@ -1,6 +1,6 @@
 {
   "endpoint": "localhost:3000",
-  "debug": "true",
+  "debug": true,
   "log": {
     "file": "/var/log/console.log"
   }
