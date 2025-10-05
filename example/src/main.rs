@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::BufRead};
 
-use node::{Path, SchemaType, Statement, Value};
-use parser::Parser;
+use node::{Path, SchemaType, Statement};
+use parser::{ConfParser, SchemaParser};
 
 type AppResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -43,12 +43,12 @@ fn main() -> AppResult<()> {
 
 fn run(config: Config) -> AppResult<()> {
     let reader = open(config.file.as_str())?;
-    let mut parser: Parser<_, Value> = Parser::new(reader);
+    let mut parser = ConfParser::new(reader);
     let statements = parser.parse()?;
 
     let schema = match config.schema_file {
         Some(path) => {
-            let mut parser = Parser::<_, SchemaType>::new(open(path.as_str())?);
+            let mut parser = SchemaParser::new(open(path.as_str())?);
 
             let schema = parser
                 .parse()?

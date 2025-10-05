@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use node::{Path, Statement, Value};
+use node::{Path, SchemaType, Statement, Value};
 
 use crate::{
     error::Error,
@@ -13,6 +13,9 @@ use crate::{
 pub mod char_reader;
 pub mod error;
 mod lexer;
+
+pub type ConfParser<T> = Parser<T, Value>;
+pub type SchemaParser<T> = Parser<T, SchemaType>;
 
 pub struct Parser<T, U = Value>
 where
